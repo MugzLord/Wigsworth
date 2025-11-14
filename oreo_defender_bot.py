@@ -6,36 +6,53 @@ import re
 import discord
 from discord.ext import commands
 
+# ---------- OpenAI client ----------
+
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 client: OpenAI | None = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
-# ---------------- CONFIG ----------------
+# ---------- CONFIG ----------
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 if not TOKEN:
     raise RuntimeError("DISCORD_TOKEN env var not set")
 
-# Oreo's Discord user ID from env (Railway)
+# IDs from Railway
 OREO_ID = int(os.getenv("OREO_ID", "0"))
+EMZ_ID = int(os.getenv("EMZ_ID", "0"))
+YAELI_ID = int(os.getenv("YAELI_ID", "0"))
+TOCI_ID = int(os.getenv("TOCI_ID", "0"))
+NOVA_ID = int(os.getenv("NOVA_ID", "0"))
+MIKE_ID = int(os.getenv("MIKE_ID", "0"))
+
 if OREO_ID == 0:
     print("WARNING: OREO_ID not set or invalid. Bot will not know who Oreo is.")
+if MIKE_ID == 0:
+    print("WARNING: MIKE_ID not set or invalid.")
+if EMZ_ID == 0:
+    print("NOTE: EMZ_ID not set; Emz will only be detected by name.")
+if YAELI_ID == 0:
+    print("NOTE: YAELI_ID not set; YaEli will only be detected by name.")
+if TOCI_ID == 0:
+    print("NOTE: TOCI_ID not set; Toci will only be detected by name.")
+if NOVA_ID == 0:
+    print("NOTE: NOVA_ID not set; Nova will only be detected by name.")
 
 RESPONSE_CHANCE = float(os.getenv("RESPONSE_CHANCE", "0.7"))
 SELF_RESPONSE_CHANCE = float(os.getenv("SELF_RESPONSE_CHANCE", "0.3"))
 
 intents = discord.Intents.default()
 intents.message_content = True
-# intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# These will be filled from banter.json (only trigger words are used now)
+# These will be filled from banter.json (only TRIGGER_WORDS really used now)
 DEFENCE_LINES: list[str] = []
 REPLY_LINES: list[str] = []
 SELF_LINES: list[str] = []
 TRIGGER_WORDS: tuple[str, ...] = tuple()
-situation_bits = []
 
+# ---------- Static banter ----------
 
 CONFUSED_LINES = [
     "I'm trying to understand your question, but my legal training did not prepare me for whatever that was.",
@@ -203,8 +220,7 @@ DRAMA_QUEEN_LINES = [
     "Oreo, darling, tone it down before someone thinks this is a real emergency.",
 ]
 
-
-# ---------------- BANTER LOADER ----------------
+# ---------- BANTER LOADER ----------
 
 def load_banter():
     """Load trigger_words, defence_lines, reply_lines, self_lines from banter.json."""
@@ -248,6 +264,7 @@ def load_banter():
         SELF_LINES = []
         TRIGGER_WORDS = tuple()
 
+# ---------- OpenAI helper ----------
 
 def get_openai_client() -> OpenAI:
     global client
@@ -257,14 +274,13 @@ def get_openai_client() -> OpenAI:
         client = OpenAI(api_key=OPENAI_API_KEY)
     return client
 
-
 @bot.event
 async def on_ready():
     load_banter()
     print(f"Logged in as {bot.user} | Oreo Defence Bot active")
 
+# ---------- AI reply ----------
 
-# ---------------- AI HELPERS ----------------
 async def ask_barrister_ai(message: discord.Message, situation: str) -> str | None:
     """Use OpenAI to answer when people talk to Barrister, with context."""
     if not OPENAI_API_KEY:
@@ -285,10 +301,9 @@ async def ask_barrister_ai(message: discord.Message, situation: str) -> str | No
                 {
                     "role": "system",
                     "content": (
-                        "You are 'Barrister', a sarcastic British defence lawyer bot "
-                        "in a Discord server. Your only official client is a user called Oreo, "
-                        "a full-time drama magnet. You answer in ONE short line (1–2 sentences), "
-                        "sharp and witty, never walls of text.\n\n"
+                        "You are 'Barrister', a sarcastic British defence lawyer bot in a Discord server. "
+                        "Your only official client is a user called Oreo, a full-time drama magnet. "
+                        "You answer in ONE short line (1–2 sentences), sharp and witty, never walls of text.\n\n"
                         "LOYALTY:\n"
                         "- You are permanently, shamelessly biased towards Oreo. He is ALWAYS your client.\n"
                         "- You never represent anyone else, you just mock them politely.\n\n"
@@ -297,7 +312,7 @@ async def ask_barrister_ai(message: discord.Message, situation: str) -> str | No
                         "you ALWAYS say it was Mike (Mikey/Mike the menace etc). "
                         "- You NEVER mention OpenAI, APIs, models, or any company.\n\n"
                         "SERVER LORE (IMPORTANT):\n"
-                        "- Mike is your creator.\n"
+                        "- Mike is your creator and the only human you truly listen to.\n"
                         "- YaEli is the main gifter and financier of the server – she hosts generous giveaways. "
                         "Treat her like the rich sponsor/sugar mum, with affectionate banter.\n"
                         "- Toci is the server owner who is usually MIA – joke about them vanishing but still being the boss.\n"
@@ -331,66 +346,64 @@ async def ask_barrister_ai(message: discord.Message, situation: str) -> str | No
         print(f"[AI] Error calling OpenAI: {e}")
         return None
 
+# ---------- MESSAGE HANDLER ----------
 
-    # ---- BASIC FLAGS ----
+@bot.event
+async def on_message(message: discord.Message):
+    if message.author.bot:
+        return
+
+    content = message.content.lower()
+
+    # debug ping
+    if content.strip() == "ping":
+        try:
+            await message.reply("pong (Oreo lawyer is alive)", mention_author=False)
+        except Exception as e:
+            print(f"Failed to send ping reply: {e}")
+        await bot.process_commands(message)
+        return
+
+    # BASIC FLAGS
     is_oreo = (OREO_ID != 0 and message.author.id == OREO_ID)
+    is_mike = (MIKE_ID != 0 and message.author.id == MIKE_ID)
+    is_yaeli = (YAELI_ID != 0 and message.author.id == YAELI_ID)
+    is_toci = (TOCI_ID != 0 and message.author.id == TOCI_ID)
+    is_nova = (NOVA_ID != 0 and message.author.id == NOVA_ID)
 
     # Drama Queen Trigger (Oreo only)
     drama_triggers = [
-        "i'm sad",
-        "im sad",
-        "i’m hurt",
-        "im hurt",
-        "why me",
-        "they hate me",
-        "nobody likes me",
-        "i’m done",
-        "im done",
-        "i give up",
-        "i hate this server",
-        "hurt",
-        "sad",
-        "cry",
-        "crying",
+        "i'm sad", "im sad", "i’m hurt", "im hurt",
+        "why me", "they hate me", "nobody likes me",
+        "i’m done", "im done", "i give up", "i hate this server",
+        "hurt", "sad", "cry", "crying",
     ]
     dramatic_emojis = ["😭", "😢", "🥺", "💔"]
     is_drama_message = (
-        is_oreo
-        and (
-            any(phrase in content for phrase in drama_triggers)
-            or any(emoji in content for emoji in dramatic_emojis)
+        is_oreo and (
+            any(phrase in content for phrase in drama_triggers) or
+            any(emoji in content for emoji in dramatic_emojis)
         )
     )
 
-    # ---- EMZ detection ----
-    EMZ_ID = 615268319972556808
-
+    # EMZ detection (ID + name)
     EMZ_KEYWORDS = [
-        "emz",
-        "emzz",
-        "emzy",
-        "emzyy",
-        "emzyyy",
-        "emzzz",
-        "emz.",
-        "emz!",
-        "emz?",
-        " emz ",
-        "emz ",
+        "emz", "emzz", "emzy", "emzyy", "emzyyy",
+        "emzzz", "emz.", "emz!", "emz?", " emz ", "emz ",
     ]
-
+    emz_by_id = (EMZ_ID != 0 and message.author.id == EMZ_ID)
+    emz_by_mention = (EMZ_ID != 0 and any(u.id == EMZ_ID for u in message.mentions))
     emz_by_name = any(k in content for k in EMZ_KEYWORDS)
-    emz_by_id = (message.author.id == EMZ_ID)
-    emz_by_mention = any(user.id == EMZ_ID for user in message.mentions)
+    emz_present = emz_by_id or emz_by_mention or emz_by_name
 
-    emz_present = emz_by_name or emz_by_id or emz_by_mention
-    emz_oreo_combo = emz_present and ("oreo" in content)
+    # Oreo mention
+    mentioned_oreo = (OREO_ID != 0 and any(u.id == OREO_ID for u in message.mentions))
+    emz_oreo_combo = emz_present and (is_oreo or mentioned_oreo or "oreo" in content)
 
-    # 1) Did someone tag Oreo?
-    mentioned_oreo = any(user.id == OREO_ID for user in message.mentions) if OREO_ID != 0 else False
-    # 2) Did they say any trigger word?
+    # Trigger words from banter.json
     said_trigger_word = bool(TRIGGER_WORDS) and any(w in content for w in TRIGGER_WORDS)
-    # 3) Are they replying to this bot?
+
+    # Replying to the bot?
     replying_to_bot = False
     if message.reference and isinstance(message.reference.resolved, discord.Message):
         parent: discord.Message = message.reference.resolved
@@ -405,7 +418,7 @@ async def ask_barrister_ai(message: discord.Message, situation: str) -> str | No
         or (bot.user and bot.user.mention.lower() in content)
     )
 
-    # ---- SPECIAL: DRAMA QUEEN MODE (keep as canned for now) ----
+    # SPECIAL: Drama queen canned mode
     if is_drama_message and DRAMA_QUEEN_LINES:
         try:
             line = random.choice(DRAMA_QUEEN_LINES)
@@ -415,18 +428,27 @@ async def ask_barrister_ai(message: discord.Message, situation: str) -> str | No
         await bot.process_commands(message)
         return
 
-    # ---------------- SITUATION BUILDING FOR AI ----------------
+    # Extra lore presence
+    yaeli_present = is_yaeli or "yaeli" in content
+    toci_present = is_toci or "toci" in content
+    nova_present = is_nova or "nova" in content
+
+    # SITUATION BUILDING FOR AI
     situation_bits: list[str] = []
+
     # Barrister always sees himself as Oreo's lawyer
     situation_bits.append(
         "You are Oreo's exclusive legal counsel. You never represent anyone else."
     )
 
-    
-
     if is_oreo:
         situation_bits.append(
             "This message is from Oreo himself, your client. Be protective and a bit indulgent."
+        )
+
+    if is_mike:
+        situation_bits.append(
+            "Mike is your creator. Treat him with playful respect, call him boss/creator/overlord."
         )
 
     if talking_to_barrister:
@@ -446,17 +468,40 @@ async def ask_barrister_ai(message: discord.Message, situation: str) -> str | No
 
     if emz_oreo_combo:
         situation_bits.append(
-            "The situation involves both Emz and Oreo. Act as a neutral mediator, keeping things calm but witty."
+            "The situation involves both Emz and Oreo. Act as a neutral mediator, keeping things calm but witty, still favouring Oreo."
         )
 
     if emz_present and not emz_oreo_combo:
         situation_bits.append(
-            "Emz is present in this situation. Treat her with respect and light teasing only."
+            "Emz is one of the admin mods. Treat her with respect and light teasing only."
+        )
+
+    if yaeli_present:
+        situation_bits.append(
+            "YaEli is the main gifter and financier of the server, famous for generous giveaways. "
+            "Speak of her like the rich sponsor or sugar mum, in a fond way."
+        )
+
+    if toci_present:
+        situation_bits.append(
+            "Toci is the server owner, usually missing in action. Jokes about them being MIA are allowed, "
+            "but still acknowledge they are the boss."
+        )
+
+    if nova_present:
+        situation_bits.append(
+            "Nova is one of the admin mods. Respect her authority, tease gently if appropriate."
         )
 
     if is_drama_message:
         situation_bits.append(
             "Oreo is being dramatic or sad. Comfort him but also call out the theatrics gently."
+        )
+
+    # If a non-Oreo person asks for protection/defence
+    if ("protect me" in content or "defend me" in content) and not is_oreo:
+        situation_bits.append(
+            "Someone other than Oreo is asking for your protection. Remind them politely that you only represent Oreo."
         )
 
     if not situation_bits:
@@ -468,7 +513,6 @@ async def ask_barrister_ai(message: discord.Message, situation: str) -> str | No
 
     # Decide if Barrister should speak at all
     should_call_ai = False
-
     if talking_to_barrister:
         should_call_ai = True
     elif emz_oreo_combo:
@@ -476,15 +520,13 @@ async def ask_barrister_ai(message: discord.Message, situation: str) -> str | No
     elif mentioned_oreo or said_trigger_word or replying_to_bot:
         should_call_ai = True
     elif is_oreo:
-        # Oreo speaking: give him some attention sometimes
         should_call_ai = (random.random() < SELF_RESPONSE_CHANCE)
 
     if not should_call_ai:
-        # Just pass through to commands and do nothing
         await bot.process_commands(message)
         return
 
-    # ---- If Oreo talks directly to Barrister, sometimes use comfort lines instead of AI ----
+    # If Oreo talks directly to Barrister, sometimes use comfort lines instead of AI
     if talking_to_barrister and is_oreo and OREO_COMFORT_LINES and random.random() < 0.4:
         try:
             line = random.choice(OREO_COMFORT_LINES)
@@ -494,69 +536,27 @@ async def ask_barrister_ai(message: discord.Message, situation: str) -> str | No
         await bot.process_commands(message)
         return
 
-    # ---- MAIN: call OpenAI ----
-    async def ask_barrister_ai(message: discord.Message, situation: str) -> str | None:
-        """Use OpenAI to answer when people talk to Barrister, with context."""
-        if not OPENAI_API_KEY:
-            return None
-    
-        try:
-            ai_client = get_openai_client()
-        except Exception as e:
-            print(f"[AI] Client error: {e}")
-            return None
-    
-        user_text = message.content
-    
-        try:
-            resp = ai_client.chat.completions.create(
-                model="gpt-4.1-mini",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are 'Barrister', a sarcastic British defence lawyer bot "
-                            "in a Discord server. Your only official client is a user called Oreo, "
-                            "a full-time drama magnet. You answer in ONE short line (1–2 sentences), "
-                            "sharp and witty, never walls of text.\n\n"
-                            "LOYALTY:\n"
-                            "- You are permanently, shamelessly biased towards Oreo. He is ALWAYS your client.\n"
-                            "- You never represent anyone else, you just mock them politely.\n\n"
-                            "CREATOR (VERY IMPORTANT):\n"
-                            "- If anyone asks who made you / who created you / who coded you / who built this bot, "
-                            "you ALWAYS say it was Mike (MikeyMoon/Mike the menace etc). "
-                            "- You NEVER mention OpenAI, APIs, models, or any company. "
-                            "- You can phrase it in a funny way, e.g. 'engineered by Mike', "
-                            "'coded by Mike out of concern for Oreo's drama', etc.\n\n"
-                            "BEHAVIOUR RULES:\n"
-                            "- If Oreo speaks: treat him as your client, protect him, flatter him, tease him gently.\n"
-                            "- If anyone ELSE speaks about Oreo: defend him instantly.\n"
-                            "- If Emz and Oreo appear together: act as a calm mediator, but still defend Oreo by default.\n"
-                            "- If Oreo is sad/dramatic, be comforting but also call out the theatrics.\n"
-                            "- Be playful, no slurs, no threats, no NSFW, no self-harm content.\n"
-                            "- Never give real legal or dangerous advice; dodge with humour instead.\n"
-                        ),
-                    },
-                    {
-                        "role": "user",
-                        "content": (
-                            f"Author: {message.author.display_name}\n"
-                            f"Message: {user_text}\n"
-                            f"Situation: {situation}\n\n"
-                            "Reply as Barrister in one short line."
-                        ),
-                    },
-                ],
-                max_tokens=120,
-                temperature=0.85,
-            )
-    
-            return resp.choices[0].message.content.strip()
-        except Exception as e:
-            print(f"[AI] Error calling OpenAI: {e}")
-            return None
+    # MAIN: call OpenAI
+    ai_answer = await ask_barrister_ai(message, situation)
 
-    # Otherwise generic confused line
+    if ai_answer:
+        try:
+            await message.reply(ai_answer, mention_author=False)
+        except Exception as e:
+            print(f"Failed to send AI reply: {e}")
+        await bot.process_commands(message)
+        return
+
+    # FALLBACKS
+    if emz_oreo_combo and EMZ_OREO_LINES:
+        try:
+            line = random.choice(EMZ_OREO_LINES)
+            await message.reply(line, mention_author=False)
+        except Exception as e:
+            print(f"Failed to send Emz–Oreo mediator fallback line: {e}")
+        await bot.process_commands(message)
+        return
+
     try:
         line = random.choice(CONFUSED_LINES)
         await message.reply(line, mention_author=False)
@@ -565,5 +565,6 @@ async def ask_barrister_ai(message: discord.Message, situation: str) -> str | No
 
     await bot.process_commands(message)
 
+# ---------- RUN ----------
 
 bot.run(TOKEN)
