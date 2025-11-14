@@ -48,6 +48,19 @@ CONFUSED_LINES = [
     "Legally speaking, I must confess: huh?"
 ]
 
+EMZ_OREO_LINES = [
+    "Relax, the Emz–Oreo case is under active mediation. Please do not add more drama to the file.",
+    "Emz and Oreo are in a supervised truce. Additional chaos will be billed to whoever started it.",
+    "The court recognises tension between Emz and Oreo, but we are aiming for peaceful coexistence, not a sequel.",
+    "Please note: Emz vs Oreo is already a full docket. No new charges may be added at this time.",
+    "As mediator, I can confirm: Emz and Oreo are not at war, just permanently in negotiations.",
+    "The Emz–Oreo situation is classed as 'friendly hostility'. You are not allowed to upgrade it to 'open conflict'.",
+    "Emz and Oreo have a diplomatic arrangement. Stirring the pot is strictly against court etiquette.",
+    "Yes, Emz finds Oreo… challenging. No, that does not mean you can farm content from it.",
+    "Mediation update: Emz and Oreo are stable. Please do not poke the situation with a stick.",
+    "Let the record show: Emz and Oreo are complicated, but this is a courtroom, not a reality show."
+]
+
 # Simple Q&A style answers so Barrister feels "smart"
 QA_ANSWERS = [
     {
@@ -276,6 +289,25 @@ async def on_message(message: discord.Message):
 
     content = message.content.lower()
 
+    # ---- EMZ detection ----
+    # Replace with Emz's real Discord ID
+    EMZ_ID = 615268319972556808 
+    
+    EMZ_KEYWORDS = [
+        "emz", "emzz", "emzy", "emzyy", "emzyyy",
+        "emzzz", "emz.", "emz!", "emz?", " emz ", "emz "
+    ]
+    
+    emz_by_name = any(k in content for k in EMZ_KEYWORDS)
+    emz_by_id = (message.author.id == EMZ_ID)
+    emz_by_mention = any(user.id == EMZ_ID for user in message.mentions)
+    
+    # TRUE if Emz is mentioned or talking
+    emz_present = emz_by_name or emz_by_id or emz_by_mention
+    
+    # Emz talking about Oreo OR someone talking about Emz + Oreo
+    emz_oreo_combo = (emz_present and "oreo" in content)
+
     # DEBUG: respond to "ping" so we know the bot is reading messages
     if content.strip() == "ping":
         try:
@@ -336,8 +368,19 @@ async def on_message(message: discord.Message):
         await bot.process_commands(message)
         return
 
+    
     # ---- B) Others mention Oreo / say 'oreo' / argue with defence ----
     should_respond = mentioned_oreo or said_trigger_word or replying_to_bot
+
+    # Special case: Emz + Oreo mentioned together -> mediator lines
+    if emz_oreo_combo and EMZ_OREO_LINES and random.random() < RESPONSE_CHANCE:
+        try:
+            line = random.choice(EMZ_OREO_LINES)
+            await message.reply(line, mention_author=False)
+        except Exception as e:
+            print(f"Failed to send Emz–Oreo mediator line: {e}")
+        await bot.process_commands(message)
+        return
 
     if should_respond and DEFENCE_LINES and random.random() < RESPONSE_CHANCE:
         if replying_to_bot and REPLY_LINES:
@@ -349,8 +392,8 @@ async def on_message(message: discord.Message):
             await message.reply(line, mention_author=False)
         except Exception as e:
             print(f"Failed to send reply: {e}")
-
-    await bot.process_commands(message)
+        await bot.process_commands(message)
+        return
 
 
 bot.run(TOKEN)
