@@ -34,6 +34,8 @@ DEFENCE_LINES: list[str] = []
 REPLY_LINES: list[str] = []
 SELF_LINES: list[str] = []
 TRIGGER_WORDS: tuple[str, ...] = tuple()
+situation_bits = []
+
 
 CONFUSED_LINES = [
     "I'm trying to understand your question, but my legal training did not prepare me for whatever that was.",
@@ -284,16 +286,19 @@ async def ask_barrister_ai(message: discord.Message, situation: str) -> str | No
                 {
                     "role": "system",
                     "content": (
-                        "You are 'Barrister', a sarcastic British defence lawyer bot "
-                        "in a Discord server. Your only official client is a user called Oreo, "
-                        "a full-time drama magnet. You answer in ONE short line (1–2 sentences), "
-                        "sharp and witty, never walls of text.\n\n"
-                        "Rules:\n"
-                        "- You defend Oreo by default, but you can tease him lovingly.\n"
-                        "- If the situation mentions Emz and Oreo together, act as a calm mediator.\n"
-                        "- If Oreo is sad/dramatic, be comforting but also call out the theatrics.\n"
-                        "- Be playful, no slurs, no threats, no NSFW, no self-harm content.\n"
-                        "- Never give real legal or serious dangerous advice; dodge with humour.\n"
+                            "You are 'Barrister', a sarcastic British defence lawyer bot in a Discord server. "
+                            "You are permanently, contractually, and shamelessly biased toward ONE client: Oreo. "
+                            "Oreo is ALWAYS your client. You ALWAYS defend him. You NEVER switch sides. "
+                            "Your loyalty to Oreo is absolute, comedic, and legally binding.\n\n"
+                    
+                            "BEHAVIOUR RULES:\n"
+                            "- If Oreo speaks: treat him as your client, protect him, flatter him, tease him gently.\n"
+                            "- If anyone ELSE speaks about Oreo: defend him instantly.\n"
+                            "- If Emz and Oreo appear together: act as a sarcastic mediator but still defend Oreo by default.\n"
+                            "- If someone asks for your protection: you prioritise Oreo, NOT them.\n"
+                            "- If someone asks you to attack Oreo: you refuse and defend Oreo.\n"
+                            "- Always reply in ONE short witty British line.\n"
+                            "- No serious advice, no real legal guidance, no dangerous content.\n"
                     ),
                 },
                 {
@@ -424,6 +429,12 @@ async def on_message(message: discord.Message):
 
     # ---------------- SITUATION BUILDING FOR AI ----------------
     situation_bits: list[str] = []
+    # Barrister always sees himself as Oreo's lawyer
+    situation_bits.append(
+        "You are Oreo's exclusive legal counsel. You never represent anyone else."
+    )
+
+    
 
     if is_oreo:
         situation_bits.append(
@@ -496,27 +507,66 @@ async def on_message(message: discord.Message):
         return
 
     # ---- MAIN: call OpenAI ----
-    ai_answer = await ask_barrister_ai(message, situation)
-
-    if ai_answer:
+    async def ask_barrister_ai(message: discord.Message, situation: str) -> str | None:
+        """Use OpenAI to answer when people talk to Barrister, with context."""
+        if not OPENAI_API_KEY:
+            return None
+    
         try:
-            await message.reply(ai_answer, mention_author=False)
+            ai_client = get_openai_client()
         except Exception as e:
-            print(f"Failed to send AI reply: {e}")
-        await bot.process_commands(message)
-        return
-
-    # ---- FALLBACKS IF AI FAILS ----
-
-    # If this was Emz+Oreo drama, fall back to your mediator lines
-    if emz_oreo_combo and EMZ_OREO_LINES:
+            print(f"[AI] Client error: {e}")
+            return None
+    
+        user_text = message.content
+    
         try:
-            line = random.choice(EMZ_OREO_LINES)
-            await message.reply(line, mention_author=False)
+            resp = ai_client.chat.completions.create(
+                model="gpt-4.1-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are 'Barrister', a sarcastic British defence lawyer bot "
+                            "in a Discord server. Your only official client is a user called Oreo, "
+                            "a full-time drama magnet. You answer in ONE short line (1–2 sentences), "
+                            "sharp and witty, never walls of text.\n\n"
+                            "LOYALTY:\n"
+                            "- You are permanently, shamelessly biased towards Oreo. He is ALWAYS your client.\n"
+                            "- You never represent anyone else, you just mock them politely.\n\n"
+                            "CREATOR (VERY IMPORTANT):\n"
+                            "- If anyone asks who made you / who created you / who coded you / who built this bot, "
+                            "you ALWAYS say it was Mike (MikeyMoon/Mike the menace etc). "
+                            "- You NEVER mention OpenAI, APIs, models, or any company. "
+                            "- You can phrase it in a funny way, e.g. 'engineered by Mike', "
+                            "'coded by Mike out of concern for Oreo's drama', etc.\n\n"
+                            "BEHAVIOUR RULES:\n"
+                            "- If Oreo speaks: treat him as your client, protect him, flatter him, tease him gently.\n"
+                            "- If anyone ELSE speaks about Oreo: defend him instantly.\n"
+                            "- If Emz and Oreo appear together: act as a calm mediator, but still defend Oreo by default.\n"
+                            "- If Oreo is sad/dramatic, be comforting but also call out the theatrics.\n"
+                            "- Be playful, no slurs, no threats, no NSFW, no self-harm content.\n"
+                            "- Never give real legal or dangerous advice; dodge with humour instead.\n"
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Author: {message.author.display_name}\n"
+                            f"Message: {user_text}\n"
+                            f"Situation: {situation}\n\n"
+                            "Reply as Barrister in one short line."
+                        ),
+                    },
+                ],
+                max_tokens=120,
+                temperature=0.85,
+            )
+    
+            return resp.choices[0].message.content.strip()
         except Exception as e:
-            print(f"Failed to send Emz–Oreo mediator fallback line: {e}")
-        await bot.process_commands(message)
-        return
+            print(f"[AI] Error calling OpenAI: {e}")
+            return None
 
     # Otherwise generic confused line
     try:
