@@ -89,6 +89,16 @@ async def on_message(message: discord.Message):
 
     content = message.content.lower()
 
+    # DEBUG: respond to "ping" so we know the bot is reading messages
+    if content.strip() == "ping":
+        try:
+            await message.reply("pong (Oreo lawyer is alive)", mention_author=False)
+        except Exception as e:
+            print(f"Failed to send ping reply: {e}")
+        await bot.process_commands(message)
+        return
+
+
     # 0) Is this Oreo himself speaking?
     is_oreo = (OREO_ID != 0 and message.author.id == OREO_ID)
 
