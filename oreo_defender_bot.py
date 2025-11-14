@@ -30,6 +30,23 @@ REPLY_LINES: list[str] = []
 SELF_LINES: list[str] = []
 TRIGGER_WORDS: tuple[str, ...] = tuple()
 
+CONFUSED_LINES = [
+    "I'm trying to understand your question, but my legal training did not prepare me for whatever that was.",
+    "I have reviewed your message and concluded: I have absolutely no idea what you're asking.",
+    "This query has been filed under '???' in the archives.",
+    "Your message raises many questions and answers exactly none.",
+    "I would object to that sentence, but I'm not sure what I'm objecting to.",
+    "According to section 404 of the Barrister Code: meaning not found.",
+    "I read that twice and my brain requested annual leave.",
+    "Your words reached the court, but the sense did not.",
+    "This appears to be English, but the meaning is currently on vacation.",
+    "The jury has reviewed your message and returned a verdict of: confused.",
+    "That statement has been entered into the record as 'vibes only, no content'.",
+    "I respect your enthusiasm, but my comprehension has left the chat.",
+    "I'm a bot with logs of Oreo drama and even I don't know what that meant.",
+    "I've checked the statutes, the footnotes, and the fine print. Still lost.",
+    "Legally speaking, I must confess: huh?"
+]
 
 # Simple Q&A style answers so Barrister feels "smart"
 QA_ANSWERS = [
@@ -258,14 +275,38 @@ async def on_message(message: discord.Message):
         await bot.process_commands(message)
         return
 
-    # ---------- Simple Q&A so Barrister can answer questions ----------
-    def find_qa_answer(text: str) -> str | None:
-        # very simple keyword matcher
-        for qa in QA_ANSWERS:
-            for kw in qa["keywords"]:
-                if kw in text:
-                    return qa["answer"]
+import re  # make sure this is at the top of your file if not already
+
+def _norm(text: str) -> list[str]:
+    # lower, remove punctuation, split into words
+    cleaned = re.sub(r"[^a-z0-9\s]", " ", text.lower())
+    return [w for w in cleaned.split() if w]
+
+def find_qa_answer(text: str) -> str | None:
+    text_words = set(_norm(text))
+    if not text_words:
         return None
+
+    best_answer = None
+    best_score = 0.0
+
+    for qa in QA_ANSWERS:
+        for kw in qa["keywords"]:
+            kw_words = set(_norm(kw))
+            if not kw_words:
+                continue
+            overlap = len(text_words & kw_words)
+            score = overlap / len(kw_words)  # how much of the keyword is covered
+
+            if score > best_score:
+                best_score = score
+                best_answer = qa["answer"]
+
+    # require at least half of the keyword words to match to avoid weird hits
+    if best_score >= 0.5:
+        return best_answer
+    return None
+
 
     # If someone is talking directly to Barrister or replying to him, try to answer
     talking_to_barrister = (
@@ -284,15 +325,11 @@ async def on_message(message: discord.Message):
                 print(f"Failed to send Q&A reply: {e}")
             await bot.process_commands(message)
             return
-    # ---------- end Q&A block ----------
-    # ---------- Fallback Q&A ----------
-    # If they are talking to Barrister but no keyword matched:
-    if talking_to_barrister:
+            
+        # fallback when talking to Barrister but no Q&A match
         try:
-            await message.reply(
-                "I'm trying to understand your question, but my legal training did not prepare me for whatever that was.",
-                mention_author=False
-            )
+            line = random.choice(CONFUSED_LINES)
+            await message.reply(line, mention_author=False)
         except Exception as e:
             print(f"Failed to send fallback reply: {e}")
         await bot.process_commands(message)
