@@ -29,7 +29,6 @@ DEFENCE_LINES: list[str] = []
 REPLY_LINES: list[str] = []
 SELF_LINES: list[str] = []
 TRIGGER_WORDS: tuple[str, ...] = tuple()
-OREO_COMFORT_LINES = [
 
 
 CONFUSED_LINES = [
@@ -195,7 +194,6 @@ DRAMA_QUEEN_LINES = [
     "Oreo, you don't need saving — you need a hobby.",
     "Oreo, your meltdown has been added to the collection. You're on Season 4 now.",
     "Oreo, darling, tone it down before someone thinks this is a real emergency.",
-
 ]
 
 
