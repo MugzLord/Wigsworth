@@ -12,7 +12,6 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 client: OpenAI | None = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 # ---------- CONFIG ----------
-
 TOKEN = os.getenv("DISCORD_TOKEN")
 if not TOKEN:
     raise RuntimeError("DISCORD_TOKEN env var not set")
