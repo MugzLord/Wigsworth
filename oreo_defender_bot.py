@@ -46,7 +46,7 @@ CONFUSED_LINES = [
     "That statement has been entered into the record as 'vibes only, no content'.",
     "I respect your enthusiasm, but my comprehension has left the chat.",
     "I'm a bot with logs of Oreo drama and even I don't know what that meant.",
-    "I've checked the statutes, the footnotes, and the fine print. Still lost.",
+    "I've checked the statutes, the footnotes, and the fine print. Still lost."
     "Legally speaking, I must confess: huh?"
 ]
 
@@ -112,7 +112,7 @@ OREO_COMFORT_LINES = [
     "Noted, Oreo. You are hurt, but also adorable in a chaotic gremlin way.",
     "Oreo, the court believes in you — even when others are simply tired of you.",
     "Oreo, I swear you collect emotional damage like it’s a minigame.",
-    "Oreo, I'm here. I will comfort you. But please, for once, breathe normally.",
+    "Oreo, I'm here. I will comfort you. But please, for once, breathe normally."
 ]
 DRAMA_QUEEN_LINES = [
     "Oreo, calm down — you’re being dramatic again. The court has seen this episode before.",
@@ -194,7 +194,7 @@ DRAMA_QUEEN_LINES = [
     "Oreo, your dramatic arc has more episodes than your sanity can handle.",
     "Oreo, you don't need saving — you need a hobby.",
     "Oreo, your meltdown has been added to the collection. You're on Season 4 now.",
-    "Oreo, darling, tone it down before someone thinks this is a real emergency."
+    "Oreo, darling, tone it down before someone thinks this is a real emergency.",
 
 ]
 
@@ -539,6 +539,24 @@ async def on_message(message: discord.Message):
         return
 
     # ---- Q&A: talking directly to Barrister ----
+    talking_to_barrister = (
+        replying_to_bot
+        or "barrister" in content
+        or "lawyer" in content
+        or bot.user.mention.lower() in content
+    )
+    
+    # --- If Oreo himself is talking to Barrister, comfort him ---
+    if talking_to_barrister and is_oreo and OREO_COMFORT_LINES:
+        try:
+            line = random.choice(OREO_COMFORT_LINES)
+            await message.reply(line, mention_author=False)
+        except Exception as e:
+            print(f"Failed to send Oreo comfort line: {e}")
+        await bot.process_commands(message)
+        return
+    
+    # --- Normal Q&A / confused answers for everyone else ---
     talking_to_barrister = (
         replying_to_bot
         or "barrister" in content
