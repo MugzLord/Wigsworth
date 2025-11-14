@@ -8,8 +8,12 @@ from discord.ext import commands
 
 TOKEN = os.getenv("DISCORD_TOKEN")  # or paste token directly (not recommended)
 
-# 👉 REPLACE THIS with Oreo's real Discord user ID
-Oreo_ID = 123456789012345678
+# 👉 Oroe/Oreo real Discord ID from Railway env var
+OREO_ID = int(os.getenv("OREO_ID", "0"))
+
+if OREO_ID == 0:
+    print("WARNING: OREO_ID not set in Railway!")
+
 
 # How often the bot should respond (0.0 = never, 1.0 = always)
 RESPONSE_CHANCE = 0.7
