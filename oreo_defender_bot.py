@@ -236,46 +236,7 @@ async def on_ready():
     print(f"Logged in as {bot.user} | Oreo Defence Bot active")
 
 
-@bot.event
-async def on_message(message: discord.Message):
-    if message.author.bot:
-        return
-
-    content = message.content.lower()
-
-    # DEBUG: respond to "ping" so we know the bot is reading messages
-    if content.strip() == "ping":
-        try:
-            await message.reply("pong (Oreo lawyer is alive)", mention_author=False)
-        except Exception as e:
-            print(f"Failed to send ping reply: {e}")
-        await bot.process_commands(message)
-        return
-
-
-    # 0) Is this Oreo himself speaking?
-    is_oreo = (OREO_ID != 0 and message.author.id == OREO_ID)
-    # 1) Did someone tag Oreo?
-    mentioned_oreo = any(user.id == OREO_ID for user in message.mentions) if OREO_ID != 0 else False
-    # 2) Did they say any trigger word?
-    said_trigger_word = bool(TRIGGER_WORDS) and any(w in content for w in TRIGGER_WORDS)
-    # 3) Are they replying to this bot?
-    replying_to_bot = False
-    if message.reference and isinstance(message.reference.resolved, discord.Message):
-        parent: discord.Message = message.reference.resolved
-        if parent.author.id == bot.user.id:
-            replying_to_bot = True
-    # ---- A) Oreo himself talks ----
-    if is_oreo and SELF_LINES and random.random() < SELF_RESPONSE_CHANCE:
-        line = random.choice(SELF_LINES)
-        try:
-            await message.reply(line, mention_author=False)
-        except Exception as e:
-            print(f"Failed to reply to Oreo: {e}")
-        await bot.process_commands(message)
-        return
-
-import re  # make sure this is at the top of your file if not already
+import re  # make sure this is near the top of your file
 
 def _norm(text: str) -> list[str]:
     # lower, remove punctuation, split into words
@@ -308,7 +269,46 @@ def find_qa_answer(text: str) -> str | None:
     return None
 
 
-    # If someone is talking directly to Barrister or replying to him, try to answer
+@bot.event
+async def on_message(message: discord.Message):
+    if message.author.bot:
+        return
+
+    content = message.content.lower()
+
+    # DEBUG: respond to "ping" so we know the bot is reading messages
+    if content.strip() == "ping":
+        try:
+            await message.reply("pong (Oreo lawyer is alive)", mention_author=False)
+        except Exception as e:
+            print(f"Failed to send ping reply: {e}")
+        await bot.process_commands(message)
+        return
+
+    # 0) Is this Oreo himself speaking?
+    is_oreo = (OREO_ID != 0 and message.author.id == OREO_ID)
+    # 1) Did someone tag Oreo?
+    mentioned_oreo = any(user.id == OREO_ID for user in message.mentions) if OREO_ID != 0 else False
+    # 2) Did they say any trigger word?
+    said_trigger_word = bool(TRIGGER_WORDS) and any(w in content for w in TRIGGER_WORDS)
+    # 3) Are they replying to this bot?
+    replying_to_bot = False
+    if message.reference and isinstance(message.reference.resolved, discord.Message):
+        parent: discord.Message = message.reference.resolved
+        if parent.author.id == bot.user.id:
+            replying_to_bot = True
+
+    # ---- A) Oreo himself talks ----
+    if is_oreo and SELF_LINES and random.random() < SELF_RESPONSE_CHANCE:
+        line = random.choice(SELF_LINES)
+        try:
+            await message.reply(line, mention_author=False)
+        except Exception as e:
+            print(f"Failed to reply to Oreo: {e}")
+        await bot.process_commands(message)
+        return
+
+    # ---- Q&A: talking directly to Barrister ----
     talking_to_barrister = (
         replying_to_bot
         or "barrister" in content
@@ -336,7 +336,6 @@ def find_qa_answer(text: str) -> str | None:
         await bot.process_commands(message)
         return
 
-  
     # ---- B) Others mention Oreo / say 'oreo' / argue with defence ----
     should_respond = mentioned_oreo or said_trigger_word or replying_to_bot
 
