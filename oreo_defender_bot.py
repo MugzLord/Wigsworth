@@ -20,7 +20,7 @@ SELF_RESPONSE_CHANCE = float(os.getenv("SELF_RESPONSE_CHANCE", "0.3"))
 
 intents = discord.Intents.default()
 intents.message_content = True
-intents.members = True
+# intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
