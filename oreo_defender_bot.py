@@ -5,6 +5,8 @@ import json
 import discord
 from discord.ext import commands
 
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 # ---------------- CONFIG ----------------
 
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -408,6 +410,14 @@ def load_banter():
         SELF_LINES = []
         TRIGGER_WORDS = tuple()
 
+def get_openai_client() -> OpenAI:
+    global client
+    if client is None:
+        if not OPENAI_API_KEY:
+            raise RuntimeError("Set OPENAI_API_KEY in Railway env vars")
+        client = OpenAI(api_key=OPENAI_API_KEY)
+    return client
+
 
 @bot.event
 async def on_ready():
@@ -457,7 +467,7 @@ async def ask_barrister_ai(message: discord.Message) -> str | None:
 
     try:
         resp = client.chat.completions.create(
-            model="gpt-4o-mini",  # or whatever model you prefer
+            model="gpt-4.1-mini",  # or whatever model you prefer
             messages=[
                 {
                     "role": "system",
@@ -670,5 +680,4 @@ async def on_message(message: discord.Message):
 
 
 bot.run(TOKEN)
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+
