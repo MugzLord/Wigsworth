@@ -1,19 +1,23 @@
 import os
 import random
-import json
 import discord
 from discord.ext import commands
 
-# --------------- CONFIG ---------------
+TOKEN = os.getenv("DISCORD_TOKEN")
+if not TOKEN:
+    raise RuntimeError("DISCORD_TOKEN env var not set")
 
-TOKEN = os.getenv("DISCORD_TOKEN")  # or paste token directly (not recommended)
-
-# 👉 Oroe/Oreo real Discord ID from Railway env var
+# 👉 REPLACE THIS via Railway env var OREO_ID
 OREO_ID = int(os.getenv("OREO_ID", "0"))
-
 if OREO_ID == 0:
-    print("WARNING: OREO_ID not set in Railway!")
+    print("WARNING: OREO_ID not set or invalid. Bot will not know who Oreo is.")
 
+# Chance to answer normal mentions
+RESPONSE_CHANCE = float(os.getenv("RESPONSE_CHANCE", "0.7"))
+# Chance to answer when Oreo himself talks
+SELF_RESPONSE_CHANCE = float(os.getenv("SELF_RESPONSE_CHANCE", "0.3"))
+
+TRIGGER_WORDS = ("oreo", "ore0", "oreoooo")  # add any spellings you like
 
 # How often the bot should respond (0.0 = never, 1.0 = always)
 RESPONSE_CHANCE = 0.7
@@ -108,46 +112,43 @@ async def on_ready():
 
 TRIGGER_WORDS = ("oroe", "oreo")  # words that trigger defence
 
+TRIGGER_WORDS = tuple(w.lower() for w in TRIGGER_WORDS)
+
 @bot.event
 async def on_message(message: discord.Message):
-    # Ignore all bot messages (including this bot)
     if message.author.bot:
         return
 
     content = message.content.lower()
 
-    # 0) Is this Oroe himself speaking?
-    is_oroe = (message.author.id == OROE_ID)
+    # 0) Is this Oreo himself speaking?
+    is_oreo = (OREO_ID != 0 and message.author.id == OREO_ID)
 
-    # 1) Did someone tag Oroe?
-    mentioned_oroe = any(user.id == OROE_ID for user in message.mentions)
+    # 1) Did someone tag Oreo?
+    mentioned_oreo = any(user.id == OREO_ID for user in message.mentions) if OREO_ID != 0 else False
 
-    # 2) Did they say his name/word (oroe / oreo etc)?
+    # 2) Did they say “oreo” (or any word in TRIGGER_WORDS)?
     said_trigger_word = any(w in content for w in TRIGGER_WORDS)
 
-    # 3) Are they replying to this bot?
+    # 3) Are they replying to the defence message?
     replying_to_bot = False
     if message.reference and isinstance(message.reference.resolved, discord.Message):
         parent: discord.Message = message.reference.resolved
         if parent.author.id == bot.user.id:
             replying_to_bot = True
 
-    # ----------------- REPLY LOGIC -----------------
-
-    # A) If Oroe himself speaks, sometimes reassure him
-    if is_oroe and SELF_LINES and random.random() < SELF_RESPONSE_CHANCE:
+    # A) Oreo himself talks → sometimes reassure him
+    if is_oreo and SELF_LINES and random.random() < SELF_RESPONSE_CHANCE:
         line = random.choice(SELF_LINES)
         try:
             await message.reply(line, mention_author=False)
         except Exception as e:
-            print(f"Failed to reply to Oroe: {e}")
-
-        # still let commands be processed
+            print(f"Failed to reply to Oreo: {e}")
         await bot.process_commands(message)
         return
 
-    # B) Defence against others mentioning him / oreo / replying to the bot
-    should_respond = mentioned_oroe or said_trigger_word or replying_to_bot
+    # B) Others mention Oreo / say oreo / argue with the defence
+    should_respond = mentioned_oreo or said_trigger_word or replying_to_bot
 
     if should_respond and random.random() < RESPONSE_CHANCE:
         if replying_to_bot and REPLY_LINES:
