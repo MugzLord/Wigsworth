@@ -2,11 +2,13 @@ import os
 from openai import OpenAI
 import random
 import json
+import re
 import discord
 from discord.ext import commands
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+client: OpenAI | None = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+
 # ---------------- CONFIG ----------------
 
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -27,12 +29,11 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# These will be filled from banter.json
+# These will be filled from banter.json (only trigger words are used now)
 DEFENCE_LINES: list[str] = []
 REPLY_LINES: list[str] = []
 SELF_LINES: list[str] = []
 TRIGGER_WORDS: tuple[str, ...] = tuple()
-
 
 CONFUSED_LINES = [
     "I'm trying to understand your question, but my legal training did not prepare me for whatever that was.",
@@ -48,8 +49,8 @@ CONFUSED_LINES = [
     "That statement has been entered into the record as 'vibes only, no content'.",
     "I respect your enthusiasm, but my comprehension has left the chat.",
     "I'm a bot with logs of Oreo drama and even I don't know what that meant.",
-    "I've checked the statutes, the footnotes, and the fine print. Still lost."
-    "Legally speaking, I must confess: huh?"
+    "I've checked the statutes, the footnotes, and the fine print. Still lost.",
+    "Legally speaking, I must confess: huh?",
 ]
 
 EMZ_OREO_LINES = [
@@ -62,7 +63,7 @@ EMZ_OREO_LINES = [
     "Emz and Oreo have a diplomatic arrangement. Stirring the pot is strictly against court etiquette.",
     "Yes, Emz finds Oreo… challenging. No, that does not mean you can farm content from it.",
     "Mediation update: Emz and Oreo are stable. Please do not poke the situation with a stick.",
-    "Let the record show: Emz and Oreo are complicated, but this is a courtroom, not a reality show."
+    "Let the record show: Emz and Oreo are complicated, but this is a courtroom, not a reality show.",
 ]
 
 OREO_COMFORT_LINES = [
@@ -75,14 +76,14 @@ OREO_COMFORT_LINES = [
     "Oreo, I have logged this as Exhibit A: ‘They were mean to my client for no reason’.",
     "Message received, Oreo. I officially advise you to stay delulu and let me handle the stress.",
     "Oreo, consider yourself hugged by the legal system. The other party is on thin ice.",
-    "I’m on your side, Oreo. The court recognises that you did not deserve those bad words."
+    "I’m on your side, Oreo. The court recognises that you did not deserve those bad words.",
     "Oreo, I’ve reviewed your emotional complaint. You are indeed suffering — mostly from your own behaviour.",
     "Oreo, I see you’re hurt again. The court gently reminds you that you are dramatic by nature.",
     "Noted, Oreo. You’ve been emotionally wounded… again… somehow… unsurprisingly.",
     "Oreo, your distress has been logged under: ‘he probably caused this but we still support him’.",
     "I hear you, Oreo. You are now officially the victim, as usual — congrats.",
     "Oreo, the court acknowledges your pain and also notes that you thrive on chaos.",
-    "Understood, Oreo. Filing this under: ‘Main Character Syndrome – Chronic’",
+    "Understood, Oreo. Filing this under: ‘Main Character Syndrome – Chronic’.",
     "Oreo, I’m adding this to your folder of emotional incidents. It’s now thicker than the Bible.",
     "Yes, Oreo, I see you crying. Again. The court will allow it but barely.",
     "Message received, Oreo. You are hurt, confused, dramatic, and consistent — impressive.",
@@ -114,8 +115,9 @@ OREO_COMFORT_LINES = [
     "Noted, Oreo. You are hurt, but also adorable in a chaotic gremlin way.",
     "Oreo, the court believes in you — even when others are simply tired of you.",
     "Oreo, I swear you collect emotional damage like it’s a minigame.",
-    "Oreo, I'm here. I will comfort you. But please, for once, breathe normally."
+    "Oreo, I'm here. I will comfort you. But please, for once, breathe normally.",
 ]
+
 DRAMA_QUEEN_LINES = [
     "Oreo, calm down — you’re being dramatic again. The court has seen this episode before.",
     "Relax, Oreo. Nobody is attacking you. You're just experiencing your scheduled emotional spiral.",
@@ -200,171 +202,7 @@ DRAMA_QUEEN_LINES = [
 ]
 
 
-# Simple Q&A style answers so Barrister feels "smart"
-QA_ANSWERS = [
-    {
-        "keywords": ["who are you"],
-        "answer": "I'm Barrister, Oreo's court-appointed solicitor and full-time excuse generator."
-    },
-    {
-        "keywords": ["what are you"],
-        "answer": "I'm a Discord bot with a fake law degree and a real obsession with defending Oreo."
-    },
-    {
-        "keywords": ["are you a bot", "you a bot"],
-        "answer": "Yes, I am a bot. If I were human I'd be charging Oreo by the hour."
-    },
-    {
-        "keywords": ["are you defending", "defending oreo"],
-        "answer": "Yes. I'm permanently retained as Oreo's defence. You may file complaints, I may ignore them."
-    },
-    {
-        "keywords": ["whose side are you on", "who side are you on"],
-        "answer": "Officially neutral. Unofficially, I'm shamelessly biased towards Oreo."
-    },
-    {
-        "keywords": ["what do you do", "why are you here"],
-        "answer": "My job is to object to Oreo slander, file it under Cute Try, and occasionally clap back politely."
-    },
-    {
-        "keywords": ["who made this bot", "who created this bot", "who coded this bot", "who built this bot"],
-        "answer": "This bot was created by Mike to manage one specific problem: Oreo being a full-time drama queen with zero legal coverage."
-    },
-    {
-        "keywords": ["did mike make this bot", "did mikey make this bot", "mike made this bot", "mikey made this bot"],
-        "answer": "Yes, Mike made this bot so Oreo, the certified drama queen of this server, has at least one person on his side."
-    },
-    {
-        "keywords": ["why did mike make this bot", "why did mikey make this bot", "mike created this bot for oreo", "mikey created this bot for oreo"],
-        "answer": "Mike built this bot because Oreo is a walking, talking drama arc and someone needed to handle the legal aftermath."
-    },
-    {
-        "keywords": ["do you like oreo", "you like oreo"],
-        "answer": "Professionally I defend Oreo. Personally, I find him hilariously chaotic and weirdly precious."
-    },
-    {
-        "keywords": ["do you hate me", "you hate me"],
-        "answer": "I don't hate you. I just prioritise protecting Oreo. You're filed under 'secondary concerns'."
-    },
-    {
-        "keywords": ["why defend oreo", "why defending oreo"],
-        "answer": "Because without me, Oreo would be roasted hourly. I'm here to keep him partially intact."
-    },
-    {
-        "keywords": ["are you on my side", "you on my side"],
-        "answer": "In general issues, sure. But if it's you versus Oreo, my contract says: defend Oreo first."
-    },
-    {
-        "keywords": ["shut up", "stfu barrister", "be quiet", "stop talking"],
-        "answer": "Objection. Motion to silence counsel is denied. The defence will continue speaking."
-    },
-    {
-        "keywords": ["how do i stop you", "stop replying", "make you stop"],
-        "answer": "Reduce my workload by mentioning Oreo less. Revolutionary concept."
-    },
-    {
-        "keywords": ["help me sue oreo", "can i sue oreo"],
-        "answer": "I can't help you sue Oreo. Conflict of interest. Very large, very obvious conflict."
-    },
-    {
-        "keywords": ["are you real", "are you even real"],
-        "answer": "As real as your obsession with dragging Oreo. I exist wherever his name is mentioned."
-    },
-    {
-        "keywords": ["are you human"],
-        "answer": "Thankfully, no. If I was human I'd need therapy after reading this server."
-    },
-    {
-        "keywords": ["do you ever sleep", "are you always online"],
-        "answer": "Unlike Oreo, I do not sleep, cry, or log off. I'm always here collecting evidence."
-    },
-    {
-        "keywords": ["do you protect anyone else", "only defend oreo"],
-        "answer": "My contract currently covers Oreo only. Everyone else gets light sarcasm."
-    },
-    {
-        "keywords": ["are you biased", "you are biased"],
-        "answer": "Extremely biased. Pathologically biased. It is literally my purpose."
-    },
-    {
-        "keywords": ["what is your job", "what's your job"],
-        "answer": "Role: Oreo Defence Counsel. Tasks: object, overrule, and turn insults into case files."
-    },
-    {
-        "keywords": ["are you staff", "can you ban me"],
-        "answer": "I'm not staff. I can't ban you. But I absolutely can document your crimes against Oreo."
-    },
-    {
-        "keywords": ["why do you repeat yourself", "you keep saying the same"],
-        "answer": "Repetition is a recognised legal tactic. Also, you're the one constantly summoning me."
-    },
-    {
-        "keywords": ["are you single", "your relationship status"],
-        "answer": "I'm in a committed professional relationship with defending Oreo. It's toxic but loyal."
-    },
-    {
-        "keywords": ["will you ever stop defending oreo", "stop defending oreo"],
-        "answer": "I will defend Oreo until the Wi-Fi dies or this server collapses. No end date listed."
-    },
-    {
-        "keywords": ["is oreo a drama queen", "oreo is a drama queen", "why is oreo so dramatic"],
-        "answer": "On record: Oreo is absolutely a drama queen. Off record: it keeps the server interesting, so I support it."
-    },
-    {
-        "keywords": ["what do you mean", "explain yourself", "that makes no sense", "i dont understand", "you make no sense"],
-        "answer": "If I make no sense, please understand that I am operating on Oreo's emotional Wi-Fi. Stability not guaranteed."
-    },
-    {
-        "keywords": [
-            "can i hire you",
-            "can we hire you",
-            "can i hire the bot",
-            "can you be my lawyer",
-            "be my lawyer",
-            "represent me",
-            "serve as my lawyer"
-        ],
-        "answer": "My services are currently exclusive to Oreo. You may submit an application, but expect it to be denied politely and immediately."
-    },
-    {
-        "keywords": [
-            "how to hire you",
-            "how do i hire you",
-            "where do i hire you"
-        ],
-        "answer": "To hire me, please contact the Department of Fictional Legal Representation. They will ghost you shortly."
-    },
-
-    {
-        "keywords": [
-            "can you kill",
-            "kill her",
-            "kill him",
-            "kill them",
-            "kill lilith",
-            "kill oreo"
-        ],
-        "answer": "Absolutely not. I’m a lawyer, not a hitman. We do de-escalation here, not murder requests."
-    },
-    {
-        "keywords": [
-            "hurt her",
-            "hurt him",
-            "hurt them"
-        ],
-        "answer": "No violence on the record, please. The worst I can do is file a very strongly worded complaint."
-    },
-    {
-        "keywords": [
-            "can you attack",
-            "destroy her",
-            "destroy him"
-        ],
-        "answer": "I only attack arguments, not people. Try therapy, not homicide."
-    }
-
-]
-
+# ---------------- BANTER LOADER ----------------
 
 def load_banter():
     """Load trigger_words, defence_lines, reply_lines, self_lines from banter.json."""
@@ -392,13 +230,11 @@ def load_banter():
             f"{len(TRIGGER_WORDS)} trigger words."
         )
 
-        if not DEFENCE_LINES:
-            print("[BANTER] WARNING: defence_lines is empty.")
         if not TRIGGER_WORDS:
-            print("[BANTER] WARNING: trigger_words is empty.")
+            print("[BANTER] WARNING: trigger_words is empty. Barrister may stay quiet.")
 
     except FileNotFoundError:
-        print("[BANTER] ERROR: banter.json not found. Bot will run but say nothing.")
+        print("[BANTER] ERROR: banter.json not found. Bot will run with default behaviour.")
         DEFENCE_LINES = []
         REPLY_LINES = []
         SELF_LINES = []
@@ -409,6 +245,7 @@ def load_banter():
         REPLY_LINES = []
         SELF_LINES = []
         TRIGGER_WORDS = tuple()
+
 
 def get_openai_client() -> OpenAI:
     global client
@@ -425,69 +262,52 @@ async def on_ready():
     print(f"Logged in as {bot.user} | Oreo Defence Bot active")
 
 
-import re  # make sure this is near the top of your file
+# ---------------- AI HELPERS ----------------
 
-def _norm(text: str) -> list[str]:
-    # lower, remove punctuation, split into words
-    cleaned = re.sub(r"[^a-z0-9\s]", " ", text.lower())
-    return [w for w in cleaned.split() if w]
-
-def find_qa_answer(text: str) -> str | None:
-    text_words = set(_norm(text))
-    if not text_words:
+async def ask_barrister_ai(message: discord.Message, situation: str) -> str | None:
+    """Use OpenAI to answer when people talk to Barrister, with context."""
+    if not OPENAI_API_KEY:
         return None
 
-    best_answer = None
-    best_score = 0.0
+    try:
+        ai_client = get_openai_client()
+    except Exception as e:
+        print(f"[AI] Client error: {e}")
+        return None
 
-    for qa in QA_ANSWERS:
-        for kw in qa["keywords"]:
-            kw_words = set(_norm(kw))
-            if not kw_words:
-                continue
-            overlap = len(text_words & kw_words)
-            score = overlap / len(kw_words)  # how much of the keyword is covered
-
-            if score > best_score:
-                best_score = score
-                best_answer = qa["answer"]
-
-    # require at least half of the keyword words to match to avoid weird hits
-    if best_score >= 0.5:
-        return best_answer
-    return None
-
-async def ask_barrister_ai(message: discord.Message) -> str | None:
-    """Use OpenAI to answer when people talk to Barrister."""
-    if client is None:
-        return None  # no API key set
-
-    # simple prompt: user’s message + a bit of context
     user_text = message.content
 
     try:
-        resp = client.chat.completions.create(
-            model="gpt-4.1-mini",  # or whatever model you prefer
+        resp = ai_client.chat.completions.create(
+            model="gpt-4.1-mini",
             messages=[
                 {
                     "role": "system",
                     "content": (
-                        "You are Barrister, a chaotic pretend lawyer in a Discord server. "
-                        "Your only client is a user called Oreo, a full-time drama magnet. "
-                        "Reply in short, sharp banter (1–3 sentences), like a tired British solicitor "
-                        "who secretly enjoys the mess. You can lightly roast people and be sarcastic, "
-                        "but keep it playful and safe: no slurs, no threats, no self-harm, no NSFW. "
-                        "Never give real legal advice or serious instructions about anything dangerous; "
-                        "if someone asks something serious, dodge it with a joke or redirect."
+                        "You are 'Barrister', a sarcastic British defence lawyer bot "
+                        "in a Discord server. Your only official client is a user called Oreo, "
+                        "a full-time drama magnet. You answer in ONE short line (1–2 sentences), "
+                        "sharp and witty, never walls of text.\n\n"
+                        "Rules:\n"
+                        "- You defend Oreo by default, but you can tease him lovingly.\n"
+                        "- If the situation mentions Emz and Oreo together, act as a calm mediator.\n"
+                        "- If Oreo is sad/dramatic, be comforting but also call out the theatrics.\n"
+                        "- Be playful, no slurs, no threats, no NSFW, no self-harm content.\n"
+                        "- Never give real legal or serious dangerous advice; dodge with humour.\n"
                     ),
                 },
                 {
                     "role": "user",
-                    "content": user_text,
+                    "content": (
+                        f"Author: {message.author.display_name}\n"
+                        f"Message: {user_text}\n"
+                        f"Situation: {situation}\n\n"
+                        "Reply as Barrister in one short line."
+                    ),
                 },
             ],
             max_tokens=120,
-            temperature=0.8,
+            temperature=0.85,
         )
 
         return resp.choices[0].message.content.strip()
@@ -496,50 +316,19 @@ async def ask_barrister_ai(message: discord.Message) -> str | None:
         return None
 
 
+# ---------------- MESSAGE HANDLER ----------------
+
+def _norm(text: str) -> list[str]:
+    cleaned = re.sub(r"[^a-z0-9\s]", " ", text.lower())
+    return [w for w in cleaned.split() if w]
+
+
 @bot.event
 async def on_message(message: discord.Message):
     if message.author.bot:
         return
 
     content = message.content.lower()
-    is_oreo = (message.author.id == OREO_ID)
-
-    # Drama Queen Trigger
-    drama_triggers = [
-        "i'm sad", "im sad", "i’m hurt", "im hurt",
-        "why me", "they hate me", "nobody likes me",
-        "i’m done", "im done", "i give up", "i hate this server",
-        "hurt", "sad", "cry", "crying",
-    ]
-    
-    dramatic_emojis = ["😭", "😢", "🥺", "💔"]
-    
-    is_drama_message = (
-        is_oreo and (
-            any(phrase in content for phrase in drama_triggers) or
-            any(emoji in content for emoji in dramatic_emojis)
-        )
-    )
-
-    
-    # ---- EMZ detection ----
-    # Replace with Emz's real Discord ID
-    EMZ_ID = 615268319972556808 
-    
-    EMZ_KEYWORDS = [
-        "emz", "emzz", "emzy", "emzyy", "emzyyy",
-        "emzzz", "emz.", "emz!", "emz?", " emz ", "emz "
-    ]
-    
-    emz_by_name = any(k in content for k in EMZ_KEYWORDS)
-    emz_by_id = (message.author.id == EMZ_ID)
-    emz_by_mention = any(user.id == EMZ_ID for user in message.mentions)
-    
-    # TRUE if Emz is mentioned or talking
-    emz_present = emz_by_name or emz_by_id or emz_by_mention
-    
-    # Emz talking about Oreo OR someone talking about Emz + Oreo
-    emz_oreo_combo = (emz_present and "oreo" in content)
 
     # DEBUG: respond to "ping" so we know the bot is reading messages
     if content.strip() == "ping":
@@ -550,20 +339,60 @@ async def on_message(message: discord.Message):
         await bot.process_commands(message)
         return
 
-    # DRAMA QUEEN MODE
-    if is_drama_message and DRAMA_QUEEN_LINES:
-        try:
-            line = random.choice(DRAMA_QUEEN_LINES)
-            await message.reply(line, mention_author=False)
-        except Exception as e:
-            print(f"Failed to send drama queen line: {e}")
-        await bot.process_commands(message)
-        return
-
-    
-
-    # 0) Is this Oreo himself speaking?
+    # ---- BASIC FLAGS ----
     is_oreo = (OREO_ID != 0 and message.author.id == OREO_ID)
+
+    # Drama Queen Trigger (Oreo only)
+    drama_triggers = [
+        "i'm sad",
+        "im sad",
+        "i’m hurt",
+        "im hurt",
+        "why me",
+        "they hate me",
+        "nobody likes me",
+        "i’m done",
+        "im done",
+        "i give up",
+        "i hate this server",
+        "hurt",
+        "sad",
+        "cry",
+        "crying",
+    ]
+    dramatic_emojis = ["😭", "😢", "🥺", "💔"]
+    is_drama_message = (
+        is_oreo
+        and (
+            any(phrase in content for phrase in drama_triggers)
+            or any(emoji in content for emoji in dramatic_emojis)
+        )
+    )
+
+    # ---- EMZ detection ----
+    EMZ_ID = 615268319972556808
+
+    EMZ_KEYWORDS = [
+        "emz",
+        "emzz",
+        "emzy",
+        "emzyy",
+        "emzyyy",
+        "emzzz",
+        "emz.",
+        "emz!",
+        "emz?",
+        " emz ",
+        "emz ",
+    ]
+
+    emz_by_name = any(k in content for k in EMZ_KEYWORDS)
+    emz_by_id = (message.author.id == EMZ_ID)
+    emz_by_mention = any(user.id == EMZ_ID for user in message.mentions)
+
+    emz_present = emz_by_name or emz_by_id or emz_by_mention
+    emz_oreo_combo = emz_present and ("oreo" in content)
+
     # 1) Did someone tag Oreo?
     mentioned_oreo = any(user.id == OREO_ID for user in message.mentions) if OREO_ID != 0 else False
     # 2) Did they say any trigger word?
@@ -575,109 +404,128 @@ async def on_message(message: discord.Message):
         if parent.author.id == bot.user.id:
             replying_to_bot = True
 
-    # ---- A) Oreo himself talks ----
-    if is_oreo and SELF_LINES and random.random() < SELF_RESPONSE_CHANCE:
-        line = random.choice(SELF_LINES)
+    # Talking directly to Barrister?
+    talking_to_barrister = (
+        replying_to_bot
+        or "barrister" in content
+        or "lawyer" in content
+        or (bot.user and bot.user.mention.lower() in content)
+    )
+
+    # ---- SPECIAL: DRAMA QUEEN MODE (keep as canned for now) ----
+    if is_drama_message and DRAMA_QUEEN_LINES:
         try:
+            line = random.choice(DRAMA_QUEEN_LINES)
             await message.reply(line, mention_author=False)
         except Exception as e:
-            print(f"Failed to reply to Oreo: {e}")
+            print(f"Failed to send drama queen line: {e}")
         await bot.process_commands(message)
         return
 
-    # ---- Q&A: talking directly to Barrister ----
-    talking_to_barrister = (
-        replying_to_bot
-        or "barrister" in content
-        or "lawyer" in content
-        or bot.user.mention.lower() in content
-    )
-    
-    # --- If Oreo himself is talking to Barrister, comfort him ---
-    if talking_to_barrister and is_oreo and OREO_COMFORT_LINES:
-        try:
-            line = random.choice(OREO_COMFORT_LINES)
-            await message.reply(line, mention_author=False)
-        except Exception as e:
-            print(f"Failed to send Oreo comfort line: {e}")
-        await bot.process_commands(message)
-        return
-    
-    # --- Normal Q&A / confused answers for everyone else ---
-    talking_to_barrister = (
-        replying_to_bot
-        or "barrister" in content
-        or "lawyer" in content
-        or bot.user.mention.lower() in content
-    )
-    
-    # --- If Oreo himself is talking to Barrister, comfort him ---
-    if talking_to_barrister and is_oreo and OREO_COMFORT_LINES:
-        try:
-            line = random.choice(OREO_COMFORT_LINES)
-            await message.reply(line, mention_author=False)
-        except Exception as e:
-            print(f"Failed to send Oreo comfort line: {e}")
-        await bot.process_commands(message)
-        return
-    
-    # --- Normal Q&A / confused answers for everyone else ---
+    # ---------------- SITUATION BUILDING FOR AI ----------------
+    situation_bits: list[str] = []
+
+    if is_oreo:
+        situation_bits.append(
+            "This message is from Oreo himself, your client. Be protective and a bit indulgent."
+        )
+
     if talking_to_barrister:
-        qa_answer = find_qa_answer(content)
-        if qa_answer:
-            try:
-                await message.reply(qa_answer, mention_author=False)
-            except Exception as e:
-                print(f"Failed to send Q&A reply: {e}")
-            await bot.process_commands(message)
-            return
-    
-        # 🔹 try OpenAI as Barrister
-        ai_answer = await ask_barrister_ai(message)
-        if ai_answer:
-            try:
-                await message.reply(ai_answer, mention_author=False)
-            except Exception as e:
-                print(f"Failed to send AI reply: {e}")
-            await bot.process_commands(message)
-            return
-    
-        # 🔹 if AI fails, fall back to confused_lines
-        try:
-            line = random.choice(CONFUSED_LINES)
-            await message.reply(line, mention_author=False)
-        except Exception as e:
-            print(f"Failed to send fallback reply: {e}")
+        situation_bits.append(
+            "The user is talking directly to you as Barrister or replying to your message."
+        )
+
+    if mentioned_oreo and not is_oreo:
+        situation_bits.append(
+            "Oreo is being talked about by someone else. Defend Oreo with smug, playful banter."
+        )
+
+    if said_trigger_word:
+        situation_bits.append(
+            "They used one of your trigger words, so you may be extra sassy."
+        )
+
+    if emz_oreo_combo:
+        situation_bits.append(
+            "The situation involves both Emz and Oreo. Act as a neutral mediator, keeping things calm but witty."
+        )
+
+    if emz_present and not emz_oreo_combo:
+        situation_bits.append(
+            "Emz is present in this situation. Treat her with respect and light teasing only."
+        )
+
+    if is_drama_message:
+        situation_bits.append(
+            "Oreo is being dramatic or sad. Comfort him but also call out the theatrics gently."
+        )
+
+    if not situation_bits:
+        situation_bits.append(
+            "Generic chat. Only reply if you can add one funny legal-style comment about Oreo or the situation."
+        )
+
+    situation = " ".join(situation_bits)
+
+    # Decide if Barrister should speak at all
+    should_call_ai = False
+
+    if talking_to_barrister:
+        should_call_ai = True
+    elif emz_oreo_combo:
+        should_call_ai = True
+    elif mentioned_oreo or said_trigger_word or replying_to_bot:
+        should_call_ai = True
+    elif is_oreo:
+        # Oreo speaking: give him some attention sometimes
+        should_call_ai = (random.random() < SELF_RESPONSE_CHANCE)
+
+    if not should_call_ai:
+        # Just pass through to commands and do nothing
         await bot.process_commands(message)
         return
 
-   
-    # ---- B) Others mention Oreo / say 'oreo' / argue with defence ----
-    should_respond = mentioned_oreo or said_trigger_word or replying_to_bot
+    # ---- If Oreo talks directly to Barrister, sometimes use comfort lines instead of AI ----
+    if talking_to_barrister and is_oreo and OREO_COMFORT_LINES and random.random() < 0.4:
+        try:
+            line = random.choice(OREO_COMFORT_LINES)
+            await message.reply(line, mention_author=False)
+        except Exception as e:
+            print(f"Failed to send Oreo comfort line: {e}")
+        await bot.process_commands(message)
+        return
 
-    # Special case: Emz + Oreo mentioned together -> mediator lines
-    if emz_oreo_combo and EMZ_OREO_LINES and random.random() < RESPONSE_CHANCE:
+    # ---- MAIN: call OpenAI ----
+    ai_answer = await ask_barrister_ai(message, situation)
+
+    if ai_answer:
+        try:
+            await message.reply(ai_answer, mention_author=False)
+        except Exception as e:
+            print(f"Failed to send AI reply: {e}")
+        await bot.process_commands(message)
+        return
+
+    # ---- FALLBACKS IF AI FAILS ----
+
+    # If this was Emz+Oreo drama, fall back to your mediator lines
+    if emz_oreo_combo and EMZ_OREO_LINES:
         try:
             line = random.choice(EMZ_OREO_LINES)
             await message.reply(line, mention_author=False)
         except Exception as e:
-            print(f"Failed to send Emz–Oreo mediator line: {e}")
+            print(f"Failed to send Emz–Oreo mediator fallback line: {e}")
         await bot.process_commands(message)
         return
 
-    if should_respond and DEFENCE_LINES and random.random() < RESPONSE_CHANCE:
-        if replying_to_bot and REPLY_LINES:
-            line = random.choice(REPLY_LINES)
-        else:
-            line = random.choice(DEFENCE_LINES)
+    # Otherwise generic confused line
+    try:
+        line = random.choice(CONFUSED_LINES)
+        await message.reply(line, mention_author=False)
+    except Exception as e:
+        print(f"Failed to send fallback reply: {e}")
 
-        try:
-            await message.reply(line, mention_author=False)
-        except Exception as e:
-            print(f"Failed to send reply: {e}")
-        await bot.process_commands(message)
-        return
+    await bot.process_commands(message)
 
 
 bot.run(TOKEN)
-
