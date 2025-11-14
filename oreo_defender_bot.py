@@ -313,11 +313,12 @@ def find_qa_answer(text: str) -> str | None:
         replying_to_bot
         or "barrister" in content
         or "lawyer" in content
-        or bot.user and bot.user.mention.lower() in content
+        or (bot.user and bot.user.mention.lower() in content)
     )
 
     if talking_to_barrister:
         qa_answer = find_qa_answer(content)
+
         if qa_answer:
             try:
                 await message.reply(qa_answer, mention_author=False)
@@ -325,7 +326,7 @@ def find_qa_answer(text: str) -> str | None:
                 print(f"Failed to send Q&A reply: {e}")
             await bot.process_commands(message)
             return
-            
+
         # fallback when talking to Barrister but no Q&A match
         try:
             line = random.choice(CONFUSED_LINES)
@@ -335,7 +336,7 @@ def find_qa_answer(text: str) -> str | None:
         await bot.process_commands(message)
         return
 
-    
+  
     # ---- B) Others mention Oreo / say 'oreo' / argue with defence ----
     should_respond = mentioned_oreo or said_trigger_word or replying_to_bot
 
