@@ -330,7 +330,7 @@ QA_ANSWERS = [
             "where do i hire you"
         ],
         "answer": "To hire me, please contact the Department of Fictional Legal Representation. They will ghost you shortly."
-    }
+    },
 
     {
         "keywords": [
