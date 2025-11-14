@@ -1,4 +1,5 @@
 import os
+from openai import OpenAI
 import random
 import json
 import discord
@@ -446,6 +447,44 @@ def find_qa_answer(text: str) -> str | None:
         return best_answer
     return None
 
+async def ask_barrister_ai(message: discord.Message) -> str | None:
+    """Use OpenAI to answer when people talk to Barrister."""
+    if client is None:
+        return None  # no API key set
+
+    # simple prompt: user’s message + a bit of context
+    user_text = message.content
+
+    try:
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",  # or whatever model you prefer
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are Barrister, a chaotic pretend lawyer in a Discord server. "
+                        "Your only client is a user called Oreo, a full-time drama magnet. "
+                        "Reply in short, sharp banter (1–3 sentences), like a tired British solicitor "
+                        "who secretly enjoys the mess. You can lightly roast people and be sarcastic, "
+                        "but keep it playful and safe: no slurs, no threats, no self-harm, no NSFW. "
+                        "Never give real legal advice or serious instructions about anything dangerous; "
+                        "if someone asks something serious, dodge it with a joke or redirect."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": user_text,
+                },
+            ],
+            max_tokens=120,
+            temperature=0.8,
+        )
+
+        return resp.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"[AI] Error calling OpenAI: {e}")
+        return None
+
 
 @bot.event
 async def on_message(message: discord.Message):
@@ -583,7 +622,17 @@ async def on_message(message: discord.Message):
             await bot.process_commands(message)
             return
     
-        # fallback confused lines...
+        # 🔹 try OpenAI as Barrister
+        ai_answer = await ask_barrister_ai(message)
+        if ai_answer:
+            try:
+                await message.reply(ai_answer, mention_author=False)
+            except Exception as e:
+                print(f"Failed to send AI reply: {e}")
+            await bot.process_commands(message)
+            return
+    
+        # 🔹 if AI fails, fall back to confused_lines
         try:
             line = random.choice(CONFUSED_LINES)
             await message.reply(line, mention_author=False)
@@ -592,8 +641,7 @@ async def on_message(message: discord.Message):
         await bot.process_commands(message)
         return
 
-
-    
+   
     # ---- B) Others mention Oreo / say 'oreo' / argue with defence ----
     should_respond = mentioned_oreo or said_trigger_word or replying_to_bot
 
@@ -622,3 +670,5 @@ async def on_message(message: discord.Message):
 
 
 bot.run(TOKEN)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
