@@ -371,7 +371,6 @@ async def ask_barrister_ai(message: discord.Message, situation: str) -> str | No
         return None
 
 # ---------- MESSAGE HANDLER ----------
-
 @bot.event
 async def on_message(message: discord.Message):
     if message.author.bot:
