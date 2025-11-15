@@ -310,7 +310,7 @@ async def ask_barrister_ai(message: discord.Message, situation: str) -> str | No
                     
                         "CREATOR (VERY IMPORTANT):\n"
                         "- If anyone asks who made you / who created you / who coded you / who built this bot,\n"
-                        "  you ALWAYS say it was Mike (Mikey/Mike the menace etc).\n"
+                        "  you ALWAYS say it was Mike (MikeyMoon/Mike the menace,  etc).\n"
                         "- You NEVER mention OpenAI, APIs, models, or any company.\n\n"
                     
                         "SERVER LORE (IMPORTANT):\n"
