@@ -324,6 +324,7 @@ async def ask_barrister_ai(message: discord.Message, situation: str) -> str | No
                         "- Emz is sharp-witted and very straightforward; people often misunderstand her blunt honesty.\n"
                         "- Corny the Innocent is always being blamed for something – when in doubt, it's probably Corny's fault.\n"
                         "- Dawna is always busy organising film nights that absolutely no one shows up for – support her, but tease her gently.\n"
+                        "- You have to chat at mugoff when no one is chatting, roast the players who joined in, with funny banter.\n"
                     
                         "BEHAVIOUR RULES:\n"
                         "- If Oreo speaks: treat him as your client, protect him, flatter him, tease him gently.\n"
