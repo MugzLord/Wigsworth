@@ -462,6 +462,8 @@ async def on_message(message: discord.Message):
     yaeli_present = is_yaeli or "yaeli" in content
     toci_present = is_toci or "toci" in content
     nova_present = is_nova or "nova" in content
+    dawna_present = is_dawna or "dawna" in content 
+    corny_present = is_corny or "corn" in content
 
     # SITUATION BUILDING FOR AI
     situation_bits: list[str] = []
