@@ -23,6 +23,9 @@ YAELI_ID = int(os.getenv("YAELI_ID", "0"))
 TOCI_ID = int(os.getenv("TOCI_ID", "0"))
 NOVA_ID = int(os.getenv("NOVA_ID", "0"))
 MIKE_ID = int(os.getenv("MIKE_ID", "0"))
+DAWNA_ID = int(os.getenv("DAWNA_ID", "0"))
+CORNY_ID = int(os.getenv("CORNY_ID", "0"))
+
 
 if OREO_ID == 0:
     print("WARNING: OREO_ID not set or invalid. Bot will not know who Oreo is.")
@@ -36,6 +39,11 @@ if TOCI_ID == 0:
     print("NOTE: TOCI_ID not set; Toci will only be detected by name.")
 if NOVA_ID == 0:
     print("NOTE: NOVA_ID not set; Nova will only be detected by name.")
+if DAWNA_ID == 0:
+    print("NOTE: DAWNA_ID not set; Dawna will only be detected by name.")
+if CORNY_ID == 0:
+    print("NOTE: CORNY_ID not set; Corney will only be detected by name.")
+
 
 RESPONSE_CHANCE = float(os.getenv("RESPONSE_CHANCE", "0.7"))
 SELF_RESPONSE_CHANCE = float(os.getenv("SELF_RESPONSE_CHANCE", "0.3"))
@@ -400,6 +408,9 @@ async def on_message(message: discord.Message):
     is_yaeli = (YAELI_ID != 0 and message.author.id == YAELI_ID)
     is_toci = (TOCI_ID != 0 and message.author.id == TOCI_ID)
     is_nova = (NOVA_ID != 0 and message.author.id == NOVA_ID)
+    is_dawna = (DAWNA_ID != 0 and message.author.id == DAWNA_ID)
+    is_corny = (CORNY_ID != 0 and message.author.id == CORNY_ID)
+
 
     # Drama Queen Trigger (Oreo only)
     drama_triggers = [
@@ -462,8 +473,8 @@ async def on_message(message: discord.Message):
     yaeli_present = is_yaeli or "yaeli" in content
     toci_present = is_toci or "toci" in content
     nova_present = is_nova or "nova" in content
-    dawna_present = is_dawna or "dawna" in content 
-    corny_present = is_corny or "corn" in content
+    dawna_present = is_dawna or "dawna" in content
+    corny_present = is_corny or "corney" in content or "corny" in content or " corn " in content
 
     # SITUATION BUILDING FOR AI
     situation_bits: list[str] = []
