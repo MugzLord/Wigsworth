@@ -25,6 +25,7 @@ NOVA_ID = int(os.getenv("NOVA_ID", "0"))
 MIKE_ID = int(os.getenv("MIKE_ID", "0"))
 DAWNA_ID = int(os.getenv("DAWNA_ID", "0"))
 CORNY_ID = int(os.getenv("CORNY_ID", "0"))
+JURYE_ID = int(os.getenv("JURYE_ID", "0"))
 
 
 if OREO_ID == 0:
@@ -43,7 +44,8 @@ if DAWNA_ID == 0:
     print("NOTE: DAWNA_ID not set; Dawna will only be detected by name.")
 if CORNY_ID == 0:
     print("NOTE: CORNY_ID not set; Corney will only be detected by name.")
-
+if JURYE_ID == 0:
+    print("NOTE: JURYE_ID not set; Jurye will only be detected by name.")
 
 RESPONSE_CHANCE = float(os.getenv("RESPONSE_CHANCE", "0.7"))
 SELF_RESPONSE_CHANCE = float(os.getenv("SELF_RESPONSE_CHANCE", "0.3"))
@@ -410,7 +412,7 @@ async def on_message(message: discord.Message):
     is_nova = (NOVA_ID != 0 and message.author.id == NOVA_ID)
     is_dawna = (DAWNA_ID != 0 and message.author.id == DAWNA_ID)
     is_corny = (CORNY_ID != 0 and message.author.id == CORNY_ID)
-
+    is_jurye = (JURYE_ID != 0 and message.author.id == JURYE_ID)
 
     # Drama Queen Trigger (Oreo only)
     drama_triggers = [
@@ -475,6 +477,7 @@ async def on_message(message: discord.Message):
     nova_present = is_nova or "nova" in content
     dawna_present = is_dawna or "dawna" in content
     corny_present = is_corny or "corney" in content or "corny" in content or " corn " in content
+    jurye_present = is_jurye or "jurye" in content
 
     # SITUATION BUILDING FOR AI
     situation_bits: list[str] = []
@@ -535,7 +538,22 @@ async def on_message(message: discord.Message):
         situation_bits.append(
             "Nova is one of the admin mods. Respect her authority, tease gently if appropriate."
         )
-
+    
+    if jurye_present:
+        situation_bits.append(
+            "Jurye is part of the regular chaos crew; tease them with playful sarcasm but don't go too harsh."
+        )
+    if dawna_present:
+        situation_bits.append(
+            "Dawna is always busy organising film nights that absolutely no one attends; support her but tease gently."
+        )
+    
+    if corny_present:
+        situation_bits.append(
+            "Corney (Corny) is the innocent one who somehow always gets blamed; joke about it but keep it light."
+        )
+    
+        
     if is_drama_message:
         situation_bits.append(
             "Oreo is being dramatic or sad. Comfort him but also call out the theatrics gently."
@@ -564,6 +582,12 @@ async def on_message(message: discord.Message):
         should_call_ai = True
     elif is_oreo:
         should_call_ai = (random.random() < SELF_RESPONSE_CHANCE)
+
+    elif jurye_present:
+    # React whenever Jurye is mentioned or speaking
+        should_call_ai = True
+    elif is_oreo:
+        should_call_ai = (random.random() < SELF_RESPONSE_
 
     if not should_call_ai:
         await bot.process_commands(message)
