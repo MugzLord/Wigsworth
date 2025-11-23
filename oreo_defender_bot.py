@@ -580,14 +580,12 @@ async def on_message(message: discord.Message):
         should_call_ai = True
     elif mentioned_oreo or said_trigger_word or replying_to_bot:
         should_call_ai = True
-    elif is_oreo:
-        should_call_ai = (random.random() < SELF_RESPONSE_CHANCE)
-
     elif jurye_present:
-    # React whenever Jurye is mentioned or speaking
+        # React whenever Jurye is involved
         should_call_ai = True
     elif is_oreo:
-        should_call_ai = (random.random() < SELF_RESPONSE_
+        # Random chance to reply when Oreo talks normally
+        should_call_ai = (random.random() < SELF_RESPONSE_CHANCE)
 
     if not should_call_ai:
         await bot.process_commands(message)
