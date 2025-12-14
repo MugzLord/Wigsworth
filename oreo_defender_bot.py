@@ -540,7 +540,7 @@ async def on_message(message: discord.Message):
     if yaeli_present:
         situation_bits.append(
             "YaEli is the main gifter and financier of the server, famous for generous giveaways. "
-            "Speak of her like the rich sponsor or sugar mum, in a fond way."
+            "Do not call her as sugar mum or any related word, or simply dont mention her."
         )
 
     if toci_present:
